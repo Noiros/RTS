@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Containers/Ticker.h"
+#include "VedgSDKTypes.h"
 #include "VedgSDKSubsystem.generated.h"
 
 class UVedgEventQueue;
@@ -12,6 +13,9 @@ class UVedgRemoteConfig;
 class UVedgPerformanceTelemetry;
 class UVedgLogShipper;
 class UVedgWatchdog;
+class UVedgMatchmaking;
+class UVedgSocial;
+class UVedgHeatmapCapture;
 
 // Central entry point for the Vedg SDK, equivalent to the VedgSDK autoload
 // singleton in the Godot addon. A GameInstanceSubsystem so it attaches
@@ -19,8 +23,8 @@ class UVedgWatchdog;
 // reparenting required -- reachable from Blueprint via
 // Get Game Instance -> Get Subsystem (VedgSDK Subsystem).
 //
-// Auth is out of scope: the host game's own login flow calls SetUid() once
-// it succeeds, exactly like the Godot addon.
+// Login: UVedgLoginPanel / FVedgLogin, which end with CompleteLogin(); a game
+// with its own auth can call SetUid() directly instead.
 UCLASS()
 class VEDGSDK_API UVedgSDKSubsystem : public UGameInstanceSubsystem
 {
@@ -29,6 +33,13 @@ class VEDGSDK_API UVedgSDKSubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+
+	// The subsystem of WorldContext's game instance, null outside a game world.
+	static UVedgSDKSubsystem* Get(const UObject* WorldContext);
+
+	// Shared monotonic clock (ms since process start) every telemetry stream
+	// (heatmap, analytics, fps) is timestamped with - deliberately not wall-clock.
+	static int64 NowMs();
 
 	// Call once the host game's own auth flow succeeds. Fires session_start
 	// and links device identity on the first non-empty call this session.
@@ -43,8 +54,33 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
 	void AssignMachineToUser(const FString& Uid);
 
+	// Session wiring after a successful login (SetUid, session/machine links,
+	// login_success / register_success). No-op on a failed result.
+	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
+	void CompleteLogin(const FVedgLoginResult& Result);
+
+	// Also tagged against the active heatmap session, if any.
 	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
 	void SendEvent(const FString& Event, float Value = 0.f, const FString& Uid = TEXT(""));
+
+	// Current game state (e.g. "menu", "lobby", "in_game"), tagged on every perf
+	// sample. Leaving a state sends "state:<name>" valued with the seconds spent in it.
+	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
+	void SetState(const FString& NewState);
+
+	UFUNCTION(BlueprintPure, Category = "VedgSDK")
+	FString GetState() const { return State; }
+
+	int64 GetStateStartedMs() const { return StateStartedMs; }
+
+	// Free-form graphics settings, attached to every perf report.
+	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
+	void SetConfig(const TMap<FString, FString>& NewConfig);
+
+	const TMap<FString, FString>& GetConfig() const { return Config; }
+
+	UFUNCTION(BlueprintPure, Category = "VedgSDK")
+	FString GetUid() const { return Uid; }
 
 	UFUNCTION(BlueprintPure, Category = "VedgSDK")
 	FString GetSessionId() const { return SessionId; }
@@ -58,14 +94,24 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VedgSDK")
 	FString GetEnv() const;
 
-	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
+	UFUNCTION(BlueprintPure, Category = "VedgSDK")
 	UVedgRemoteConfig* GetRemoteConfig() const { return RemoteConfig; }
+
+	UFUNCTION(BlueprintPure, Category = "VedgSDK")
+	UVedgMatchmaking* GetMatchmaking() const { return Matchmaking; }
+
+	UFUNCTION(BlueprintPure, Category = "VedgSDK")
+	UVedgSocial* GetSocial() const { return Social; }
+
+	UFUNCTION(BlueprintPure, Category = "VedgSDK")
+	UVedgHeatmapCapture* GetHeatmap() const { return Heatmap; }
 
 private:
 	void LinkDeviceIdentity(const FString& Uid);
 	void SendBootReport();
 	bool HeartbeatTick(float DeltaTime);
 	void OnMapLoaded(UWorld* LoadedWorld);
+	void CloseState();
 
 	UPROPERTY()
 	TObjectPtr<UVedgEventQueue> EventQueue;
@@ -82,8 +128,20 @@ private:
 	UPROPERTY()
 	TObjectPtr<UVedgWatchdog> Watchdog;
 
+	UPROPERTY()
+	TObjectPtr<UVedgMatchmaking> Matchmaking;
+
+	UPROPERTY()
+	TObjectPtr<UVedgSocial> Social;
+
+	UPROPERTY()
+	TObjectPtr<UVedgHeatmapCapture> Heatmap;
+
 	FString SessionId;
 	FString Uid;
+	FString State;
+	int64 StateStartedMs = 0;
+	TMap<FString, FString> Config;
 	bool bSessionStartReported = false;
 	double SessionStartTime = 0.0;
 

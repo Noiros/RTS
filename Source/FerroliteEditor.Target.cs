@@ -3,13 +3,13 @@
 using UnrealBuildTool;
 using System.Collections.Generic;
 
-public class RTSEditorTarget : TargetRules
+public class FerroliteEditorTarget : TargetRules
 {
-	public RTSEditorTarget(TargetInfo Target) : base(Target)
+	public FerroliteEditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 
-		ExtraModuleNames.AddRange( new string[] { "RTS" } );
+		ExtraModuleNames.AddRange( new string[] { "Ferrolite" } );
 	}
 }

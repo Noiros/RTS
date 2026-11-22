@@ -118,7 +118,7 @@ void UVedgWatchdog::CheckPreviousSession()
 	{
 		const TSharedRef<FJsonObject> Build = MakeShared<FJsonObject>();
 		Build->SetStringField(TEXT("version"), UVedgSDKSettings::GetVersion());
-		Build->SetStringField(TEXT("env"), VedgEnvToString(Settings->ResolveEnv()));
+		Build->SetStringField(TEXT("env"), Settings->ResolveGameEnv());
 		Build->SetStringField(TEXT("platform"), FString(FPlatformProperties::PlatformName()));
 
 		const TSharedRef<FJsonObject> Session = MakeShared<FJsonObject>();

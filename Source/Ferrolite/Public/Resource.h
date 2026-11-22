@@ -7,7 +7,7 @@
 #include "Resource.generated.h"
 
 UCLASS()
-class RTS_API AResource : public AActor
+class FERROLITE_API AResource : public AActor
 {
 	GENERATED_BODY()
 	

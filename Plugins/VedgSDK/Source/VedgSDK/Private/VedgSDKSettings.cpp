@@ -6,6 +6,7 @@
 #include "HAL/PlatformMisc.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Algo/AllOf.h"
 
 const UVedgSDKSettings* UVedgSDKSettings::Get()
 {
@@ -20,17 +21,17 @@ FString UVedgSDKSettings::GetGameSlug() const
 EVedgEnv UVedgSDKSettings::ResolveEnv() const
 {
 	FString EnvString;
-	if (FParse::Value(FCommandLine::Get(), TEXT("environment="), EnvString))
+	if (FParse::Value(FCommandLine::Get(), TEXT("api-env="), EnvString))
 	{
 		EVedgEnv Parsed;
 		if (VedgEnvFromString(EnvString, Parsed))
 		{
 			return Parsed;
 		}
-		UE_LOG(LogVedgSDK, Warning, TEXT("Invalid -environment=%s, falling back"), *EnvString);
+		UE_LOG(LogVedgSDK, Warning, TEXT("Invalid -api-env=%s, falling back"), *EnvString);
 	}
 
-	EnvString = FPlatformMisc::GetEnvironmentVariable(TEXT("ENV"));
+	EnvString = FPlatformMisc::GetEnvironmentVariable(TEXT("VEDG_API_ENV"));
 	if (!EnvString.IsEmpty())
 	{
 		EVedgEnv Parsed;
@@ -38,10 +39,37 @@ EVedgEnv UVedgSDKSettings::ResolveEnv() const
 		{
 			return Parsed;
 		}
-		UE_LOG(LogVedgSDK, Warning, TEXT("Invalid ENV=%s, falling back"), *EnvString);
+		UE_LOG(LogVedgSDK, Warning, TEXT("Invalid VEDG_API_ENV=%s, falling back"), *EnvString);
 	}
 
 	return DefaultEnv;
+}
+
+FString UVedgSDKSettings::ResolveGameEnv() const
+{
+	FString Resolved;
+	if (!FParse::Value(FCommandLine::Get(), TEXT("environment="), Resolved))
+	{
+		Resolved = FPlatformMisc::GetEnvironmentVariable(TEXT("ENV"));
+	}
+	if (Resolved.IsEmpty())
+	{
+		Resolved = GameEnv;
+	}
+
+	const FString ApiEnv = VedgEnvToString(ResolveEnv());
+	if (Resolved.IsEmpty())
+	{
+		return ApiEnv;
+	}
+
+	const bool bValid = Resolved.Len() <= 32 && Algo::AllOf(Resolved, [](TCHAR C) { return FChar::IsAlnum(C) || C == TEXT('_') || C == TEXT('-'); });
+	if (!bValid)
+	{
+		UE_LOG(LogVedgSDK, Error, TEXT("Unrecognized environment \"%s\" - falling back to \"%s\""), *Resolved, *ApiEnv);
+		return ApiEnv;
+	}
+	return Resolved;
 }
 
 FString UVedgSDKSettings::GetApiUrl() const

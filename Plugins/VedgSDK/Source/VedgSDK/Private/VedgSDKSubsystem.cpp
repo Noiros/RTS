@@ -10,7 +10,15 @@
 #include "Dom/JsonObject.h"
 #include "HAL/PlatformMisc.h"
 #include "HAL/PlatformProperties.h"
+#include "Auth/VedgLogin.h"
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
+#include "HAL/PlatformTime.h"
+#include "Heatmap/VedgHeatmapCapture.h"
 #include "Http/VedgEventQueue.h"
+#include "Matchmaking/VedgMatchmaking.h"
+#include "Social/VedgSocial.h"
 #include "Identity/VedgMachineIdentity.h"
 #include "Misc/CoreMisc.h"
 #include "Misc/Guid.h"
@@ -41,6 +49,9 @@ void UVedgSDKSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	LogShipper = NewObject<UVedgLogShipper>(this);
 	LogShipper->StartUp(EventQueue, SessionId);
 
+	Heatmap = NewObject<UVedgHeatmapCapture>(this);
+	Heatmap->StartUp(EventQueue);
+
 	PerformanceTelemetry = NewObject<UVedgPerformanceTelemetry>(this);
 	PerformanceTelemetry->StartUp(EventQueue, SessionId);
 
@@ -51,12 +62,18 @@ void UVedgSDKSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	}
 
 	RemoteConfig = NewObject<UVedgRemoteConfig>(this);
-	RemoteConfig->Fetch();
+
+	Matchmaking = NewObject<UVedgMatchmaking>(this);
+	Social = NewObject<UVedgSocial>(this);
+	Social->StartUp(Matchmaking);
 
 	SendBootReport();
 
-	SendEvent(TEXT("heartbeat"));
-	HeartbeatHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UVedgSDKSubsystem::HeartbeatTick), HeartbeatIntervalSec);
+	if (!IsRunningDedicatedServer())
+	{
+		SendEvent(TEXT("heartbeat"));
+		HeartbeatHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UVedgSDKSubsystem::HeartbeatTick), HeartbeatIntervalSec);
+	}
 
 	// Automatic "here and there" event: fires on every level transition
 	// (UGameplayStatics::OpenLevel, seamless travel, etc.) with no Blueprint
@@ -78,6 +95,7 @@ void UVedgSDKSubsystem::Deinitialize()
 		MapLoadedHandle.Reset();
 	}
 
+	CloseState();
 	if (bSessionStartReported)
 	{
 		const double Elapsed = FDateTime::UtcNow().ToUnixTimestampDecimal() - SessionStartTime;
@@ -98,6 +116,14 @@ void UVedgSDKSubsystem::Deinitialize()
 
 	// A clean Deinitialize never runs on a hard crash/kill -- that gap is
 	// exactly what Watchdog's next-launch detection covers.
+	if (Matchmaking)
+	{
+		Matchmaking->Shutdown();
+	}
+	if (Heatmap)
+	{
+		Heatmap->Shutdown();
+	}
 	if (Watchdog)
 	{
 		Watchdog->Shutdown();
@@ -116,6 +142,63 @@ void UVedgSDKSubsystem::Deinitialize()
 	}
 
 	Super::Deinitialize();
+}
+
+UVedgSDKSubsystem* UVedgSDKSubsystem::Get(const UObject* WorldContext)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+	return GameInstance ? GameInstance->GetSubsystem<UVedgSDKSubsystem>() : nullptr;
+}
+
+int64 UVedgSDKSubsystem::NowMs()
+{
+	return (int64)((FPlatformTime::Seconds() - GStartTime) * 1000.0);
+}
+
+void UVedgSDKSubsystem::CompleteLogin(const FVedgLoginResult& Result)
+{
+	FVedgLogin::Complete(this, Result);
+}
+
+void UVedgSDKSubsystem::SetState(const FString& NewState)
+{
+	if (NewState == State)
+	{
+		return;
+	}
+	CloseState();
+	State = NewState;
+	StateStartedMs = NowMs();
+}
+
+void UVedgSDKSubsystem::SetConfig(const TMap<FString, FString>& NewConfig)
+{
+	if (NewConfig.OrderIndependentCompareEqual(Config))
+	{
+		return;
+	}
+	// Flush first so no perf sample mixes two configs.
+	if (PerformanceTelemetry)
+	{
+		PerformanceTelemetry->Flush();
+	}
+	Config = NewConfig;
+}
+
+void UVedgSDKSubsystem::CloseState()
+{
+	if (State.IsEmpty())
+	{
+		return;
+	}
+	// Flush first so no perf sample straddles two states.
+	if (PerformanceTelemetry)
+	{
+		PerformanceTelemetry->Flush();
+	}
+	SendEvent(TEXT("state:") + State, (NowMs() - StateStartedMs) / 1000.f);
+	State.Reset();
 }
 
 bool UVedgSDKSubsystem::HeartbeatTick(float)
@@ -189,6 +272,11 @@ void UVedgSDKSubsystem::SendEvent(const FString& Event, float Value, const FStri
 	}
 
 	EventQueue->EnqueueAnalyticsEvent(AnalyticsEvent);
+
+	if (Heatmap && Heatmap->IsActive())
+	{
+		Heatmap->RecordEventValue(Event, Value);
+	}
 }
 
 FString UVedgSDKSubsystem::GetGameSlug() const
@@ -203,7 +291,7 @@ FString UVedgSDKSubsystem::GetApiUrl() const
 
 FString UVedgSDKSubsystem::GetEnv() const
 {
-	return VedgEnvToString(UVedgSDKSettings::Get()->ResolveEnv());
+	return UVedgSDKSettings::Get()->ResolveGameEnv();
 }
 
 void UVedgSDKSubsystem::SendBootReport()
@@ -232,7 +320,8 @@ void UVedgSDKSubsystem::SendBootReport()
 	SessionBody->SetStringField(TEXT("machine_id"), FVedgMachineIdentity::GetMachineId());
 	SessionBody->SetStringField(TEXT("app_version"), UVedgSDKSettings::GetVersion());
 	SessionBody->SetStringField(TEXT("platform"), FString(FPlatformProperties::PlatformName()));
-	SessionBody->SetStringField(TEXT("env"), VedgEnvToString(Settings->ResolveEnv()));
+	SessionBody->SetStringField(TEXT("env"), Settings->ResolveGameEnv());
+	SessionBody->SetBoolField(TEXT("editor"), GIsEditor);
 	EventQueue->Enqueue(TEXT("/reports/session/start"), SessionBody);
 
 	FVedgMachineIdentity::PostHardwareSnapshot(EventQueue, Settings->GetGameSlug());

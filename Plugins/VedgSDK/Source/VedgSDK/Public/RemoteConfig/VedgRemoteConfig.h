@@ -7,20 +7,29 @@
 #include "JsonObjectWrapper.h"
 #include "VedgRemoteConfig.generated.h"
 
-// One-shot GET /remote-config/{game_slug} fetched at boot, no auth, no
-// retry, no disk cache. Bypasses the event queue entirely -- mirrors
-// VedgRemoteConfig from the Godot addon, the simplest module in the SDK.
-UCLASS()
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVedgOnRemoteConfigKey, const FString&, Key, bool, bSuccess);
+
+// Per-key remote config, GET /remote-config/{game}/{key}?env=, fetched on
+// demand and cached for the session. Bypasses the event queue entirely --
+// mirrors VedgRemoteConfig from the Godot addon.
+UCLASS(BlueprintType)
 class VEDGSDK_API UVedgRemoteConfig : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	void Fetch();
+	// No-op (success) if the key is already cached and !bForce. Fires OnKeyFetched.
+	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
+	void Fetch(const FString& Key, bool bForce = false);
+
+	void FetchThen(const FString& Key, bool bForce, TFunction<void(bool)> OnDone);
 
 	UFUNCTION(BlueprintCallable, Category = "VedgSDK")
 	FJsonObjectWrapper GetDict(const FString& Key) const;
 
+	UPROPERTY(BlueprintAssignable, Category = "VedgSDK")
+	FVedgOnRemoteConfigKey OnKeyFetched;
+
 private:
-	TSharedPtr<FJsonObject> Config;
+	TMap<FString, TSharedPtr<FJsonValue>> Config;
 };

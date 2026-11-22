@@ -59,11 +59,15 @@ public:
 	static constexpr int32 AnalyticsBatchSize = 50;
 	static constexpr double BaseBackoffSec = 5.0;
 	static constexpr double MaxBackoffSec = 300.0;
+	static constexpr int32 ReportsEventBatchSize = 20;
 
 private:
 	bool Tick(float DeltaTime);
 	void Flush();
 	void FlushOutbox();
+	// Due /reports/event entries go out as one POST /reports/events; returns their ids.
+	TSet<FString> FlushReportsEventBatch(const FString& ApiUrl, double Now);
+	void OnReportsBatchComplete(const TArray<FString>& EntryIds, const FVedgHttpResult& Result);
 	void FlushAnalytics();
 	void OnOutboxEntryComplete(const FString& EntryId, const FVedgHttpResult& Result);
 	void OnAnalyticsFlushComplete(int32 BatchSize, const FVedgHttpResult& Result);

@@ -1,0 +1,30 @@
+,fr_FR,en_US,ja_JA,de_DE,ru_RU,zh_CN,pt_PT,es_ES,it_IT
+vedg_social_add_placeholder,Pseudo du joueur,Player pseudo,プレイヤーのニックネーム,Spielername,Никнейм игрока,玩家昵称,Pseudónimo do jogador,Apodo del jugador,Pseudonimo del giocatore
+vedg_social_add_btn,Ajouter,Add,追加,Hinzufügen,Добавить,添加,Adicionar,Añadir,Aggiungi
+vedg_social_request_sent,Demande envoyée,Request sent,申請を送信しました,Anfrage gesendet,Заявка отправлена,请求已发送,Pedido enviado,Solicitud enviada,Richiesta inviata
+vedg_social_group,Groupe,Group,グループ,Gruppe,Группа,队伍,Grupo,Grupo,Gruppo
+vedg_social_leave,Quitter le groupe,Leave group,グループを抜ける,Gruppe verlassen,Покинуть группу,离开队伍,Sair do grupo,Salir del grupo,Lascia il gruppo
+vedg_social_group_invites,Invitations de groupe,Group invites,グループ招待,Gruppeneinladungen,Приглашения в группу,队伍邀请,Convites de grupo,Invitaciones de grupo,Inviti al gruppo
+vedg_social_requests,Demandes reçues,Received requests,受信した申請,Erhaltene Anfragen,Полученные заявки,收到的请求,Pedidos recebidos,Solicitudes recibidas,Richieste ricevute
+vedg_social_friends,Amis,Friends,フレンド,Freunde,Друзья,好友,Amigos,Amigos,Amici
+vedg_social_sent,Demandes envoyées,Sent requests,送信した申請,Gesendete Anfragen,Отправленные заявки,已发送的请求,Pedidos enviados,Solicitudes enviadas,Richieste inviate
+vedg_social_accept,Accepter,Accept,承認,Annehmen,Принять,接受,Aceitar,Aceptar,Accetta
+vedg_social_decline,Refuser,Decline,拒否,Ablehnen,Отклонить,拒绝,Recusar,Rechazar,Rifiuta
+vedg_social_invite,Inviter,Invite,招待,Einladen,Пригласить,邀请,Convidar,Invitar,Invita
+vedg_social_join,Rejoindre,Join,参加,Beitreten,Присоединиться,加入,Entrar,Unirse,Unisciti
+vedg_social_remove,Retirer,Remove,削除,Entfernen,Удалить,移除,Remover,Eliminar,Rimuovi
+vedg_social_kick,Exclure,Kick,追放,Entfernen,Исключить,踢出,Expulsar,Expulsar,Espelli
+vedg_social_make_owner,Nommer chef,Make owner,リーダーにする,Zum Leiter machen,Сделать лидером,设为队长,Tornar líder,Hacer líder,Rendi capo
+vedg_social_owner,Chef,Owner,リーダー,Leiter,Лидер,队长,Líder,Líder,Capo
+vedg_social_ready,Prêt,Ready,準備完了,Bereit,Готов,已准备,Pronto,Listo,Pronto
+vedg_social_online,En ligne,Online,オンライン,Online,В сети,在线,Online,En línea,Online
+vedg_social_online_in,Sur {game},Playing {game},{game} をプレイ中,Spielt {game},Играет в {game},正在玩 {game},A jogar {game},Jugando a {game},Gioca a {game}
+vedg_social_offline,Hors ligne,Offline,オフライン,Offline,Не в сети,离线,Offline,Desconectado,Offline
+vedg_social_error_not_friends,Ce joueur n'est pas votre ami,This player is not your friend,このプレイヤーはフレンドではありません,Dieser Spieler ist nicht dein Freund,Этот игрок не ваш друг,该玩家不是你的好友,Este jogador não é teu amigo,Este jugador no es tu amigo,Questo giocatore non è tuo amico
+vedg_social_error_offline,Ce joueur n'est pas en ligne,This player is offline,このプレイヤーはオフラインです,Dieser Spieler ist offline,Этот игрок не в сети,该玩家不在线,Este jogador está offline,Este jugador está desconectado,Questo giocatore è offline
+vedg_social_error_group_full,Le groupe est complet,The group is full,グループは満員です,Die Gruppe ist voll,Группа заполнена,队伍已满,O grupo está cheio,El grupo está lleno,Il gruppo è pieno
+vedg_social_error_already_in_group,Ce joueur est déjà dans le groupe,This player is already in the group,このプレイヤーは既にグループにいます,Dieser Spieler ist bereits in der Gruppe,Этот игрок уже в группе,该玩家已在队伍中,Este jogador já está no grupo,Este jugador ya está en el grupo,Questo giocatore è già nel gruppo
+vedg_social_error_groups_disabled,Les groupes sont désactivés,Groups are disabled,グループは無効です,Gruppen sind deaktiviert,Группы отключены,队伍功能已关闭,Os grupos estão desativados,Los grupos están desactivados,I gruppi sono disattivati
+vedg_social_error_user_not_found,Joueur introuvable,Player not found,プレイヤーが見つかりません,Spieler nicht gefunden,Игрок не найден,未找到玩家,Jogador não encontrado,Jugador no encontrado,Giocatore non trovato
+vedg_social_error_already_friends,Vous êtes déjà amis,You are already friends,既にフレンドです,Ihr seid bereits Freunde,Вы уже друзья,你们已经是好友,Já são amigos,Ya sois amigos,Siete già amici
+vedg_social_error_generic,Une erreur est survenue,Something went wrong,エラーが発生しました,Ein Fehler ist aufgetreten,Произошла ошибка,出现错误,Ocorreu um erro,Se ha producido un error,Si è verificato un errore

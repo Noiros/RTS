@@ -5,7 +5,7 @@
 #include "Unit.generated.h"
 
 UCLASS()
-class RTS_API AUnit : public ACharacter
+class FERROLITE_API AUnit : public ACharacter
 {
 	GENERATED_BODY()
 

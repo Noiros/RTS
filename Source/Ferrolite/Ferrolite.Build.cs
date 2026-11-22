@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class RTS : ModuleRules
+public class Ferrolite : ModuleRules
 {
-	public RTS(ReadOnlyTargetRules Target) : base(Target)
+	public Ferrolite(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	

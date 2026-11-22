@@ -11,5 +11,8 @@
 class VEDGSDK_API FVedgHttpRequest
 {
 public:
-	static void Request(const FString& Url, const FString& Verb, const FString& JsonBody, TFunction<void(FVedgHttpResult)> OnComplete, float Timeout = 10.f);
+	// BearerToken adds "Authorization: Bearer" (player-authenticated routes:
+	// friends, lobbies). The JSON body is parsed on failures too, so callers can
+	// read the API's {"error": ...} / ban fields.
+	static void Request(const FString& Url, const FString& Verb, const FString& JsonBody, TFunction<void(FVedgHttpResult)> OnComplete, float Timeout = 10.f, const FString& BearerToken = FString());
 };

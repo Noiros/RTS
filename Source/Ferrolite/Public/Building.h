@@ -5,7 +5,7 @@
 #include "Building.generated.h"
 
 UCLASS()
-class RTS_API ABuilding : public AActor
+class FERROLITE_API ABuilding : public AActor
 {
 	GENERATED_BODY()
 	

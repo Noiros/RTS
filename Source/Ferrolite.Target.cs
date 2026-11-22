@@ -3,13 +3,13 @@
 using UnrealBuildTool;
 using System.Collections.Generic;
 
-public class RTSTarget : TargetRules
+public class FerroliteTarget : TargetRules
 {
-	public RTSTarget(TargetInfo Target) : base(Target)
+	public FerroliteTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 
-		ExtraModuleNames.AddRange( new string[] { "RTS" } );
+		ExtraModuleNames.AddRange( new string[] { "Ferrolite" } );
 	}
 }

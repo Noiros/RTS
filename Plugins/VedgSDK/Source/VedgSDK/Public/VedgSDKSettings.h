@@ -33,23 +33,27 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Vedg SDK")
 	TMap<FString, FVedgAuxApiUrlSet> AuxApiUrls;
 
-	// Key into AuxApiUrls that VedgAuth resolves its base URL from.
+	// Game environment sent as "env" to matchmaking, lobbies and remote config.
+	// Empty = same as the API env.
 	UPROPERTY(Config, EditAnywhere, Category = "Vedg SDK")
-	FString LoginApiUrlKey = TEXT("objectwars_api");
+	FString GameEnv;
 
 	static const UVedgSDKSettings* Get();
 
 	FString GetGameSlug() const;
 
-	// Resolution order: -environment=<value> on the command line, then the ENV
-	// environment variable, then DefaultEnv. Invalid values fall back with a warning.
+	// API env. Resolution order: -api-env=<value> on the command line, then the
+	// VEDG_API_ENV environment variable, then DefaultEnv. Invalid values fall back with a warning.
 	EVedgEnv ResolveEnv() const;
+
+	// Game env: -environment=<value>, then ENV, then GameEnv, then the API env.
+	// Mirrors VedgSDK.env() in the Godot addon.
+	FString ResolveGameEnv() const;
 
 	// ApiUrls[ResolveEnv()], falling back to ApiUrls["dev"], else empty.
 	FString GetApiUrl() const;
 
-	// AuxApiUrls[Key][ResolveEnv()], falling back to AuxApiUrls[Key]["dev"], else
-	// empty. Used by VedgAuth via LoginApiUrlKey.
+	// AuxApiUrls[Key][ResolveEnv()], falling back to AuxApiUrls[Key]["dev"], else empty.
 	FString GetAuxApiUrl(const FString& Key) const;
 
 	static FString GetVersion();

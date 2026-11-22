@@ -137,6 +137,7 @@ void UVedgEventQueue::FlushOutbox()
 
 	const FString ApiUrl = UVedgSDKSettings::Get()->GetApiUrl();
 	const double Now = FDateTime::UtcNow().ToUnixTimestampDecimal();
+	const TSet<FString> Batched = FlushReportsEventBatch(ApiUrl, Now);
 
 	int32 Sent = 0;
 	for (const FVedgOutboxEntry& Entry : Outbox)
@@ -145,7 +146,7 @@ void UVedgEventQueue::FlushOutbox()
 		{
 			break;
 		}
-		if (Entry.NextAttemptAt > Now)
+		if (Entry.NextAttemptAt > Now || Batched.Contains(Entry.Id))
 		{
 			continue;
 		}
@@ -169,6 +170,93 @@ void UVedgEventQueue::FlushOutbox()
 				}
 			});
 	}
+}
+
+TSet<FString> UVedgEventQueue::FlushReportsEventBatch(const FString& ApiUrl, double Now)
+{
+	TArray<FString> EntryIds;
+	TArray<TSharedPtr<FJsonValue>> Entries;
+	for (const FVedgOutboxEntry& Entry : Outbox)
+	{
+		if (Entry.Path != TEXT("/reports/event") || Entry.NextAttemptAt > Now || !Entry.Body.IsValid())
+		{
+			continue;
+		}
+		const TSharedRef<FJsonObject> Item = MakeShared<FJsonObject>();
+		for (const TCHAR* Field : { TEXT("type"), TEXT("data"), TEXT("machine_id"), TEXT("session_id") })
+		{
+			if (const TSharedPtr<FJsonValue> Value = Entry.Body->TryGetField(Field))
+			{
+				Item->SetField(Field, Value);
+			}
+		}
+		Entries.Add(MakeShared<FJsonValueObject>(Item));
+		EntryIds.Add(Entry.Id);
+		if (EntryIds.Num() >= ReportsEventBatchSize)
+		{
+			break;
+		}
+	}
+	if (EntryIds.Num() == 0)
+	{
+		return {};
+	}
+
+	const TSharedRef<FJsonObject> Payload = MakeShared<FJsonObject>();
+	Payload->SetStringField(TEXT("game"), UVedgSDKSettings::Get()->GetGameSlug());
+	Payload->SetArrayField(TEXT("entries"), Entries);
+
+	FString Body;
+	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Body);
+	FJsonSerializer::Serialize(Payload, Writer);
+
+	++PendingRequests;
+	TWeakObjectPtr<UVedgEventQueue> WeakThis(this);
+	FVedgHttpRequest::Request(ApiUrl + TEXT("/reports/events"), TEXT("POST"), Body,
+		[WeakThis, EntryIds](FVedgHttpResult Result)
+		{
+			if (UVedgEventQueue* Self = WeakThis.Get())
+			{
+				Self->OnReportsBatchComplete(EntryIds, Result);
+			}
+		});
+
+	return TSet<FString>(EntryIds);
+}
+
+void UVedgEventQueue::OnReportsBatchComplete(const TArray<FString>& EntryIds, const FVedgHttpResult& Result)
+{
+	const bool bDrop = Result.bValid || (Result.StatusCode >= 400 && Result.StatusCode < 500);
+	if (Result.bValid)
+	{
+		UE_LOG(LogVedgSDK, Log, TEXT("Delivered %d /reports/event entries"), EntryIds.Num());
+	}
+	else if (bDrop)
+	{
+		UE_LOG(LogVedgSDK, Warning, TEXT("Dropping %d /reports/event entries after client error %d (won't succeed on retry)"), EntryIds.Num(), Result.StatusCode);
+	}
+
+	const double Now = FDateTime::UtcNow().ToUnixTimestampDecimal();
+	for (int32 i = Outbox.Num() - 1; i >= 0; --i)
+	{
+		if (!EntryIds.Contains(Outbox[i].Id))
+		{
+			continue;
+		}
+		if (bDrop)
+		{
+			Outbox.RemoveAt(i);
+		}
+		else
+		{
+			Outbox[i].Attempts += 1;
+			Outbox[i].NextAttemptAt = Now + Backoff(Outbox[i].Attempts);
+		}
+	}
+	bDirty = true;
+
+	--PendingRequests;
+	FinishFlushIfIdle();
 }
 
 void UVedgEventQueue::OnOutboxEntryComplete(const FString& EntryId, const FVedgHttpResult& Result)
