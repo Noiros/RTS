@@ -38,10 +38,6 @@ void UVedgSDKSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		UE_LOG(LogVedgSDK, Warning, TEXT("VedgSDK: GameSlug is not configured (Project Settings > Vedg SDK)"));
 	}
-	if (Settings->GetApiUrl().IsEmpty())
-	{
-		UE_LOG(LogVedgSDK, Warning, TEXT("VedgSDK: ApiUrl is not configured for env '%s' (Project Settings > Vedg SDK)"), *VedgEnvToString(Settings->ResolveEnv()));
-	}
 
 	EventQueue = NewObject<UVedgEventQueue>(this);
 	EventQueue->StartUp();

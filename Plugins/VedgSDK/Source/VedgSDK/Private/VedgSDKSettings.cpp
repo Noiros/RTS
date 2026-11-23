@@ -18,33 +18,6 @@ FString UVedgSDKSettings::GetGameSlug() const
 	return GameSlug;
 }
 
-EVedgEnv UVedgSDKSettings::ResolveEnv() const
-{
-	FString EnvString;
-	if (FParse::Value(FCommandLine::Get(), TEXT("api-env="), EnvString))
-	{
-		EVedgEnv Parsed;
-		if (VedgEnvFromString(EnvString, Parsed))
-		{
-			return Parsed;
-		}
-		UE_LOG(LogVedgSDK, Warning, TEXT("Invalid -api-env=%s, falling back"), *EnvString);
-	}
-
-	EnvString = FPlatformMisc::GetEnvironmentVariable(TEXT("VEDG_API_ENV"));
-	if (!EnvString.IsEmpty())
-	{
-		EVedgEnv Parsed;
-		if (VedgEnvFromString(EnvString, Parsed))
-		{
-			return Parsed;
-		}
-		UE_LOG(LogVedgSDK, Warning, TEXT("Invalid VEDG_API_ENV=%s, falling back"), *EnvString);
-	}
-
-	return DefaultEnv;
-}
-
 FString UVedgSDKSettings::ResolveGameEnv() const
 {
 	FString Resolved;
@@ -57,7 +30,7 @@ FString UVedgSDKSettings::ResolveGameEnv() const
 		Resolved = GameEnv;
 	}
 
-	const FString ApiEnv = VedgEnvToString(ResolveEnv());
+	const FString ApiEnv = TEXT("prod");
 	if (Resolved.IsEmpty())
 	{
 		return ApiEnv;
@@ -74,36 +47,7 @@ FString UVedgSDKSettings::ResolveGameEnv() const
 
 FString UVedgSDKSettings::GetApiUrl() const
 {
-	const FString EnvKey = VedgEnvToString(ResolveEnv());
-	if (const FString* Url = ApiUrls.Find(EnvKey))
-	{
-		return *Url;
-	}
-	if (const FString* DevUrl = ApiUrls.Find(TEXT("dev")))
-	{
-		return *DevUrl;
-	}
-	return FString();
-}
-
-FString UVedgSDKSettings::GetAuxApiUrl(const FString& Key) const
-{
-	const FVedgAuxApiUrlSet* Set = AuxApiUrls.Find(Key);
-	if (!Set)
-	{
-		return FString();
-	}
-
-	const FString EnvKey = VedgEnvToString(ResolveEnv());
-	if (const FString* Url = Set->Urls.Find(EnvKey))
-	{
-		return *Url;
-	}
-	if (const FString* DevUrl = Set->Urls.Find(TEXT("dev")))
-	{
-		return *DevUrl;
-	}
-	return FString();
+	return TEXT("https://api.vedgstudio.com/prod");
 }
 
 FString UVedgSDKSettings::GetVersion()

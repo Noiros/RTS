@@ -6,30 +6,6 @@
 #include "Dom/JsonObject.h"
 #include "VedgSDKTypes.generated.h"
 
-UENUM(BlueprintType)
-enum class EVedgEnv : uint8
-{
-	Local,
-	Dev,
-	Prod
-};
-
-VEDGSDK_API FString VedgEnvToString(EVedgEnv Env);
-VEDGSDK_API bool VedgEnvFromString(const FString& Value, EVedgEnv& OutEnv);
-
-// Unreal's reflection system can't nest TMap<FString, TMap<...>> directly as a
-// UPROPERTY, so an auxiliary API URL set (per-env URLs for one keyed service,
-// e.g. login) is wrapped in this one-field struct. Mirrors one entry of Godot's
-// custom_api_urls: Dictionary[String, Dictionary].
-USTRUCT()
-struct FVedgAuxApiUrlSet
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "Vedg SDK")
-	TMap<FString, FString> Urls;
-};
-
 // Internal plumbing types, not Blueprint-exposed.
 
 struct FVedgHttpResult

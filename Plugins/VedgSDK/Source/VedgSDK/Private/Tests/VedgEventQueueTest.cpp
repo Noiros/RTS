@@ -21,12 +21,9 @@ bool FVedgEventQueueTest::RunTest(const FString& Parameters)
 	const double BackoffHigh = UVedgEventQueue::Backoff(20);
 	TestTrue(TEXT("Backoff(20) is capped at MaxBackoffSec + jitter"), BackoffHigh >= 300.0 && BackoffHigh < 305.0);
 
-	// Enqueue no-ops without a configured API URL -- point it at a
-	// throwaway local address so the cap/persistence logic below actually runs.
+	// Enqueue no-ops without a game slug -- set one so the cap/persistence logic below actually runs.
 	UVedgSDKSettings* Settings = GetMutableDefault<UVedgSDKSettings>();
-	const TMap<FString, FString> SavedUrls = Settings->ApiUrls;
 	const FString SavedSlug = Settings->GameSlug;
-	Settings->ApiUrls = { { TEXT("dev"), TEXT("http://127.0.0.1:9") } };
 	Settings->GameSlug = TEXT("vedg-sdk-test");
 
 	UVedgEventQueue* Queue = NewObject<UVedgEventQueue>(GetTransientPackage());
@@ -53,7 +50,6 @@ bool FVedgEventQueueTest::RunTest(const FString& Parameters)
 
 	// Don't leave fixture data in the on-disk outbox for a later real run to try to flush.
 	ReloadedQueue->Reset();
-	Settings->ApiUrls = SavedUrls;
 	Settings->GameSlug = SavedSlug;
 
 	return true;

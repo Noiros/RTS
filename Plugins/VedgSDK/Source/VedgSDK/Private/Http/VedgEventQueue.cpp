@@ -50,7 +50,7 @@ void UVedgEventQueue::Shutdown()
 
 void UVedgEventQueue::Enqueue(const FString& Path, TSharedPtr<FJsonObject> Body)
 {
-	if (UVedgSDKSettings::Get()->GetApiUrl().IsEmpty())
+	if (UVedgSDKSettings::Get()->GetGameSlug().IsEmpty())
 	{
 		return;
 	}
@@ -76,7 +76,7 @@ void UVedgEventQueue::Enqueue(const FString& Path, TSharedPtr<FJsonObject> Body)
 
 void UVedgEventQueue::EnqueueAnalyticsEvent(const FVedgAnalyticsEvent& InEvent)
 {
-	if (UVedgSDKSettings::Get()->GetApiUrl().IsEmpty())
+	if (UVedgSDKSettings::Get()->GetGameSlug().IsEmpty())
 	{
 		return;
 	}
