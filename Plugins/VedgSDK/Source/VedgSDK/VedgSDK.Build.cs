@@ -7,6 +7,8 @@ public class VedgSDK : ModuleRules
 	public VedgSDK(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		// Several VedgSDK translation units define file-local helpers with identical names in anonymous namespaces.
+		bUseUnity = false;
 
 		PublicDependencyModuleNames.AddRange(
 			new string[]
