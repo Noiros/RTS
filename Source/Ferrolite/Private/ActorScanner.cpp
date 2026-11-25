@@ -99,7 +99,7 @@ void UActorScanner::UnregisterUnit(AUnit* Unit)
 
 void UActorScanner::RegisterBuilding(ABuilding* Building)
 {
-	if (!IsValid(Building))
+	if (!IsValid(Building) || Building->IsGhost())
 	{
 		return;
 	}
@@ -322,24 +322,7 @@ void UActorScanner::FindCachedActorsOfClassInRadius(
 
 void UActorScanner::OnActorSpawned(AActor* SpawnedActor)
 {
-	if (!IsValid(SpawnedActor))
-	{
-		return;
-	}
-
-	if (AUnit* Unit = Cast<AUnit>(SpawnedActor))
-	{
-		Units.AddUnique(Unit);
-	}
-	else if (ABuilding* Building = Cast<ABuilding>(SpawnedActor))
-	{
-		Buildings.AddUnique(Building);
-	}
-	else if (AResource* Resource = Cast<AResource>(SpawnedActor))
-	{
-		Resources.AddUnique(Resource);
-	}
-
+	// Units/Buildings/Resources register themselves in BeginPlay; here we only feed the per-class buckets.
 	AddActorToMatchingBuckets(SpawnedActor);
 }
 
@@ -366,21 +349,7 @@ void UActorScanner::HandleActorEndPlay(AActor* Actor, EEndPlayReason::Type EndPl
 		return;
 	}
 
-	TrackedActors.Remove(Actor);
-
-	if (AUnit* Unit = Cast<AUnit>(Actor))
-	{
-		Units.RemoveSwap(Unit, EAllowShrinking::No);
-	}
-	else if (ABuilding* Building = Cast<ABuilding>(Actor))
-	{
-		Buildings.RemoveSwap(Building, EAllowShrinking::No);
-	}
-	else if (AResource* Resource = Cast<AResource>(Actor))
-	{
-		Resources.RemoveSwap(Resource, EAllowShrinking::No);
-	}
-
+	// Typed arrays are cleaned by the actors' own EndPlay (Unregister*).
 	RemoveActorFromAllBuckets(Actor);
 }
 
@@ -401,7 +370,8 @@ void UActorScanner::TrackActorForEndPlay(AActor* Actor)
 
 void UActorScanner::AddActorToMatchingBuckets(AActor* Actor)
 {
-	if (!IsValid(Actor))
+	// Already tracked means already in every matching bucket (later buckets are seeded from the world).
+	if (!IsTrackable(Actor) || TrackedActors.Contains(Actor))
 	{
 		return;
 	}
@@ -413,7 +383,7 @@ void UActorScanner::AddActorToMatchingBuckets(AActor* Actor)
 		{
 			if (Actor->IsA(BucketClass))
 			{
-				Pair.Value.AddUnique(Actor);
+				Pair.Value.Add(Actor);
 				bMatchedAny = true;
 			}
 		}
@@ -431,6 +401,8 @@ void UActorScanner::RemoveActorFromAllBuckets(AActor* Actor)
 	{
 		return;
 	}
+
+	TrackedActors.Remove(Actor);
 
 	for (TPair<TObjectKey<UClass>, TArray<TWeakObjectPtr<AActor>>>& Pair : CachedActorsByClass)
 	{
@@ -459,7 +431,7 @@ TArray<TWeakObjectPtr<AActor>>& UActorScanner::GetOrSeedBucket(UClass* ActorClas
 		for (TActorIterator<AActor> It(World, ActorClass); It; ++It)
 		{
 			AActor* Actor = *It;
-			if (IsValid(Actor) && !Actor->IsActorBeingDestroyed())
+			if (IsTrackable(Actor) && !Actor->IsActorBeingDestroyed())
 			{
 				NewBucket.Add(Actor);
 				TrackActorForEndPlay(Actor);
@@ -468,4 +440,131 @@ TArray<TWeakObjectPtr<AActor>>& UActorScanner::GetOrSeedBucket(UClass* ActorClas
 	}
 
 	return NewBucket;
+}
+
+bool UActorScanner::IsTrackable(const AActor* Actor)
+{
+	if (!IsValid(Actor))
+	{
+		return false;
+	}
+	const ABuilding* Building = Cast<ABuilding>(Actor);
+	return !(Building && Building->IsGhost());
+}
+
+EFaction UActorScanner::GetActorFaction(const AActor* Actor)
+{
+	// shortcut: Faction is a Blueprint variable read by reflection; move it to a C++ UPROPERTY on AUnit/ABuilding if this shows up in profiles.
+	if (!Actor)
+	{
+		return EFaction::None;
+	}
+	const FProperty* Prop = Actor->GetClass()->FindPropertyByName(TEXT("Faction"));
+	if (const FEnumProperty* EnumProp = CastField<FEnumProperty>(Prop))
+	{
+		return static_cast<EFaction>(EnumProp->GetUnderlyingProperty()->GetUnsignedIntPropertyValue(EnumProp->ContainerPtrToValuePtr<void>(Actor)));
+	}
+	if (const FByteProperty* ByteProp = CastField<FByteProperty>(Prop))
+	{
+		return static_cast<EFaction>(ByteProp->GetPropertyValue_InContainer(Actor));
+	}
+	return EFaction::None;
+}
+
+double UActorScanner::GetDataNumber(const AActor* Actor, FName PropertyName, double Default)
+{
+	const FObjectPropertyBase* DataProp = Actor ? CastField<FObjectPropertyBase>(Actor->GetClass()->FindPropertyByName(TEXT("Data"))) : nullptr;
+	const UObject* Data = DataProp ? DataProp->GetObjectPropertyValue_InContainer(Actor) : nullptr;
+	if (!Data)
+	{
+		return Default;
+	}
+	const FNumericProperty* NumProp = CastField<FNumericProperty>(Data->GetClass()->FindPropertyByName(PropertyName));
+	if (!NumProp)
+	{
+		return Default;
+	}
+	const void* Value = NumProp->ContainerPtrToValuePtr<void>(Data);
+	return NumProp->IsFloatingPoint() ? NumProp->GetFloatingPointPropertyValue(Value) : static_cast<double>(NumProp->GetSignedIntPropertyValue(Value));
+}
+
+AActor* UActorScanner::FindNearestEnemyForUnit(AActor* Querier, float Radius)
+{
+	UWorld* World = Querier ? Querier->GetWorld() : nullptr;
+	UActorScanner* Scanner = World ? World->GetSubsystem<UActorScanner>() : nullptr;
+	if (!Scanner)
+	{
+		return nullptr;
+	}
+
+	const EFaction SelfFaction = GetActorFaction(Querier);
+	const bool bSelfHuman = SelfFaction == EFaction::Human;
+	double BestDist = Radius;
+	AActor* Best = nullptr;
+
+	for (const TWeakObjectPtr<AUnit>& WeakUnit : Scanner->Units)
+	{
+		AUnit* Unit = WeakUnit.Get();
+		if (!IsValid(Unit) || Unit->IsActorBeingDestroyed() || (GetActorFaction(Unit) == EFaction::Human) == bSelfHuman)
+		{
+			continue;
+		}
+		const double Dist = Querier->GetDistanceTo(Unit);
+		if (Dist < BestDist)
+		{
+			BestDist = Dist;
+			Best = Unit;
+		}
+	}
+	if (Best)
+	{
+		return Best;
+	}
+
+	for (const TWeakObjectPtr<ABuilding>& WeakBuilding : Scanner->Buildings)
+	{
+		ABuilding* Building = WeakBuilding.Get();
+		if (!IsValid(Building) || Building->IsActorBeingDestroyed() || GetActorFaction(Building) == SelfFaction)
+		{
+			continue;
+		}
+		FVector Origin, Extent;
+		Building->GetActorBounds(true, Origin, Extent);
+		const double Dist = Querier->GetDistanceTo(Building) - FMath::Max(Extent.X, Extent.Y);
+		if (Dist < BestDist)
+		{
+			BestDist = Dist;
+			Best = Building;
+		}
+	}
+	return Best;
+}
+
+AActor* UActorScanner::FindNearestUnitNotOfFaction(AActor* Querier, float Radius)
+{
+	UWorld* World = Querier ? Querier->GetWorld() : nullptr;
+	UActorScanner* Scanner = World ? World->GetSubsystem<UActorScanner>() : nullptr;
+	if (!Scanner)
+	{
+		return nullptr;
+	}
+
+	const EFaction SelfFaction = GetActorFaction(Querier);
+	double BestDist = Radius;
+	AActor* Best = nullptr;
+	for (const TWeakObjectPtr<AUnit>& WeakUnit : Scanner->Units)
+	{
+		AUnit* Unit = WeakUnit.Get();
+		if (!IsValid(Unit) || Unit->IsActorBeingDestroyed() || GetActorFaction(Unit) == SelfFaction)
+		{
+			continue;
+		}
+		const double Dist = Querier->GetDistanceTo(Unit);
+		if (Dist < BestDist)
+		{
+			BestDist = Dist;
+			Best = Unit;
+		}
+	}
+	return Best;
 }

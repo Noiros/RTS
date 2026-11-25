@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/ObjectKey.h"
+#include "RTSTypes.h"
 #include "ActorScanner.generated.h"
 
 class AUnit;
@@ -68,7 +69,28 @@ public:
 		bool b2DDistance = true,
 		const AActor* IgnoreActor = nullptr);
 
+	/**
+	 * Same rules as BP_UnitBase.FindNearestEnemy: nearest enemy unit (human vs non-human, 3D distance),
+	 * else nearest enemy building (raw faction compare, distance minus bounds radius). Null if none within Radius.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "RTS|ActorScanner", meta = (DefaultToSelf = "Querier"))
+	static AActor* FindNearestEnemyForUnit(AActor* Querier, float Radius);
+
+	/** Nearest unit whose Faction differs from Querier's (3D distance), as BP_Building_Turret.TurretScan did. */
+	UFUNCTION(BlueprintCallable, Category = "RTS|ActorScanner", meta = (DefaultToSelf = "Querier"))
+	static AActor* FindNearestUnitNotOfFaction(AActor* Querier, float Radius);
+
+	/** Reads the Blueprint "Faction" variable (EFaction) of an actor; None if it has none. */
+	static EFaction GetActorFaction(const AActor* Actor);
+
+	/** Reads a numeric property of the actor's "Data" asset (e.g. VisionRadius); Default if missing. */
+	static double GetDataNumber(const AActor* Actor, FName PropertyName, double Default);
+
+	const TArray<TWeakObjectPtr<AUnit>>& GetUnitsRaw() const { return Units; }
+	const TArray<TWeakObjectPtr<ABuilding>>& GetBuildingsRaw() const { return Buildings; }
+
 private:
+	static bool IsTrackable(const AActor* Actor);
 	void OnActorSpawned(AActor* SpawnedActor);
 	void OnLevelAddedToWorld(ULevel* Level, UWorld* World);
 

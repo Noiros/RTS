@@ -8,6 +8,27 @@ ABuilding::ABuilding()
 	PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
+void ABuilding::SetGhost(bool bInGhost)
+{
+	if (bIsGhost == bInGhost)
+	{
+		return;
+	}
+	bIsGhost = bInGhost;
+
+	if (UActorScanner* Scanner = GetWorld() ? GetWorld()->GetSubsystem<UActorScanner>() : nullptr)
+	{
+		if (bIsGhost)
+		{
+			Scanner->UnregisterBuilding(this);
+		}
+		else
+		{
+			Scanner->RegisterBuilding(this);
+		}
+	}
+}
+
 void ABuilding::BeginPlay()
 {
 	Super::BeginPlay();
@@ -33,4 +54,3 @@ void ABuilding::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	Super::EndPlay(EndPlayReason);
 }
-
