@@ -75,3 +75,6 @@ Plugins/**/Intermediate/*
 DerivedDataCache/*
 .ai
 .idea
+
+# Vendored native crash handler (VedgSDK)
+!Plugins/VedgSDK/Resources/CrashHandler/**/*.exe

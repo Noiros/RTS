@@ -30,12 +30,13 @@ public:
 	// write succeeding.
 	void MarkCrashed();
 
+	// Also read by the native crash handler (clean_exit flag).
+	static FString GetSessionFilePath();
+
 private:
 	bool Tick(float DeltaTime);
 	void WriteHeartbeat(bool bCleanExit, bool bCrashed);
 	void CheckPreviousSession();
-
-	static FString GetSessionFilePath();
 
 	UPROPERTY()
 	TObjectPtr<UVedgEventQueue> EventQueue;

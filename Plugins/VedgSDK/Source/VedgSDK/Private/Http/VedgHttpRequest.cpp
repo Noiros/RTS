@@ -8,7 +8,7 @@
 #include "Serialization/JsonSerializer.h"
 #include "VedgSDKModule.h"
 
-void FVedgHttpRequest::Request(const FString& Url, const FString& Verb, const FString& JsonBody, TFunction<void(FVedgHttpResult)> OnComplete, float Timeout, const FString& BearerToken)
+void FVedgHttpRequest::Request(const FString& Url, const FString& Verb, const FString& JsonBody, TFunction<void(FVedgHttpResult)> OnComplete, float Timeout, const FString& BearerToken, const TMap<FString, FString>& Headers)
 {
 	const auto HttpRequest = FHttpModule::Get().CreateRequest();
 	HttpRequest->SetURL(Url);
@@ -21,6 +21,10 @@ void FVedgHttpRequest::Request(const FString& Url, const FString& Verb, const FS
 	if (!BearerToken.IsEmpty())
 	{
 		HttpRequest->SetHeader(TEXT("Authorization"), TEXT("Bearer ") + BearerToken);
+	}
+	for (const TPair<FString, FString>& Header : Headers)
+	{
+		HttpRequest->SetHeader(Header.Key, Header.Value);
 	}
 	HttpRequest->SetTimeout(Timeout);
 

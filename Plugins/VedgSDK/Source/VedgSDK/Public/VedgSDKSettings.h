@@ -24,6 +24,36 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Vedg SDK")
 	FString GameEnv;
 
+	// Crash dialog branding, written to crash_handler.json next to the native crash handler at packaging
+	// time (VedgSDK.Build.cs). Empty title/product name = the handler falls back to the game slug.
+	// {game} is replaced by the product name.
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashWindowTitle;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashProductName;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashAccentColor = TEXT("#E23B3B");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashTitle = TEXT("Oops, {game} has crashed");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler", meta = (MultiLine = true))
+	FString CrashMessage = TEXT("{game} closed unexpectedly.\n\nYou can restart it right away. To help us fix this crash, please leave the box below checked to send the diagnostic logs.");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashSendLogsLabel = TEXT("Send diagnostic logs");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashRestartButton = TEXT("Restart the game");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	FString CrashCloseButton = TEXT("Close");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Crash Handler")
+	bool bCrashSendLogsDefault = true;
+
 	static const UVedgSDKSettings* Get();
 
 	FString GetGameSlug() const;

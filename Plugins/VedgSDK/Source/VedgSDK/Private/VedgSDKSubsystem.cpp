@@ -5,6 +5,7 @@
 #include "VedgSDKModule.h"
 #include "VedgSDKTypes.h"
 #include "CoreGlobals.h"
+#include "CrashReporting/VedgCrashHandler.h"
 #include "CrashReporting/VedgLogShipper.h"
 #include "CrashReporting/VedgWatchdog.h"
 #include "Dom/JsonObject.h"
@@ -55,6 +56,8 @@ void UVedgSDKSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		Watchdog = NewObject<UVedgWatchdog>(this);
 		Watchdog->StartUp(EventQueue, SessionId);
+		// After the watchdog: the handler reads its heartbeat file to tell a crash from a clean exit.
+		FVedgCrashHandler::Launch(this);
 	}
 
 	RemoteConfig = NewObject<UVedgRemoteConfig>(this);

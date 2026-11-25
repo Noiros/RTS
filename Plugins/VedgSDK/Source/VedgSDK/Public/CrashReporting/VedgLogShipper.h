@@ -25,6 +25,7 @@ public:
 private:
 	bool Tick(float DeltaTime);
 	void Flush();
+	FString GetOffsetFilePath() const;
 
 	UPROPERTY()
 	TObjectPtr<UVedgEventQueue> EventQueue;

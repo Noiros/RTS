@@ -17,7 +17,8 @@
 
 FString UVedgWatchdog::GetSessionFilePath()
 {
-	return FPaths::ProjectSavedDir() / TEXT("VedgSDK/watchdog_session.json");
+	// Absolute: also handed to the native crash handler, which runs from another working directory.
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("VedgSDK/watchdog_session.json"));
 }
 
 void UVedgWatchdog::StartUp(UVedgEventQueue* InEventQueue, const FString& InSessionId)
@@ -91,6 +92,14 @@ void UVedgWatchdog::CheckPreviousSession()
 	Previous->TryGetBoolField(TEXT("clean_exit"), bCleanExit);
 	if (bCleanExit)
 	{
+		return;
+	}
+
+	// The native crash handler already reported this crash (it drops this marker after its own report).
+	const FString ReportedMarker = FilePath + TEXT(".reported");
+	if (IFileManager::Get().FileExists(*ReportedMarker))
+	{
+		IFileManager::Get().Delete(*ReportedMarker);
 		return;
 	}
 

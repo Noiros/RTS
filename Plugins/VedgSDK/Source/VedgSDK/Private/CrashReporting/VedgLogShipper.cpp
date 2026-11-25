@@ -8,6 +8,7 @@
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformOutputDevices.h"
+#include "Misc/FileHelper.h"
 
 void UVedgLogShipper::StartUp(UVedgEventQueue* InEventQueue, const FString& InSessionId)
 {
@@ -15,6 +16,8 @@ void UVedgLogShipper::StartUp(UVedgEventQueue* InEventQueue, const FString& InSe
 	SessionId = InSessionId;
 	LogFilePath = FPlatformOutputDevices::GetAbsoluteLogFilename();
 	ReadOffset = 0;
+	// The native crash handler resumes from this sidecar at exit; a stale one would make it skip this session's lines.
+	IFileManager::Get().Delete(*GetOffsetFilePath(), false, false, true);
 
 	TickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UVedgLogShipper::Tick), FlushInterval);
 }
@@ -110,4 +113,12 @@ void UVedgLogShipper::Flush()
 
 	EventQueue->Enqueue(TEXT("/reports/event"), Body);
 	PendingLines.Empty();
+
+	// Shared with the native crash handler's exit catch-up read, so it never re-ships these lines.
+	FFileHelper::SaveStringToFile(LexToString(ReadOffset), *GetOffsetFilePath());
+}
+
+FString UVedgLogShipper::GetOffsetFilePath() const
+{
+	return LogFilePath + TEXT(".offset");
 }
