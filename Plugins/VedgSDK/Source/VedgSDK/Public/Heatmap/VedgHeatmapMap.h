@@ -46,7 +46,7 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Vedg Heatmap")
 	TObjectPtr<UBoxComponent> ScanBounds;
 
-	// Scans the level's collision and uploads the occupied voxels (needs the editor's Vedg login for the heatmap key).
+	// Scans the level's collision and uploads the occupied voxels (needs the editor's Vedg login (Tools > Vedg) for the heatmap key).
 	UFUNCTION(CallInEditor, Category = "Vedg Heatmap", meta = (DisplayName = "Voxelize Map"))
 	void VoxelizeMap();
 

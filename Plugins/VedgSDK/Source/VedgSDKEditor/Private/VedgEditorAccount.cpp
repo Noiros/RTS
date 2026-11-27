@@ -168,7 +168,11 @@ void FVedgEditorAccount::FetchKey(const FString& Path, FOnKey OnDone)
 		FVedgHttpRequest::Request(ApiUrl() + Path, TEXT("GET"), FString(), [Path, OnDone](FVedgHttpResult Result)
 		{
 			FString Key;
-			if (Result.StatusCode != 200 || !Result.ResponseObject.IsValid() || !Result.ResponseObject->TryGetStringField(TEXT("key"), Key))
+			if (Result.StatusCode == 200 && Result.ResponseObject.IsValid() && Result.ResponseObject->HasTypedField<EJson::Null>(TEXT("key")))
+			{
+				UE_LOG(LogVedgSDK, Warning, TEXT("Vedg: %s - no key generated for this game yet, generate it in Vedg Admin"), *Path);
+			}
+			else if (Result.StatusCode != 200 || !Result.ResponseObject.IsValid() || !Result.ResponseObject->TryGetStringField(TEXT("key"), Key))
 			{
 				UE_LOG(LogVedgSDK, Warning, TEXT("Vedg: cannot read %s (%s)"), *Path, *ErrorOf(Result, FString::Printf(TEXT("HTTP %d"), Result.StatusCode)));
 			}

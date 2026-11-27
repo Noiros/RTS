@@ -129,7 +129,7 @@ void AVedgHeatmapMap::VoxelizeMap()
 		}
 		if (Key.IsEmpty())
 		{
-			UE_LOG(LogVedgSDK, Error, TEXT("VedgHeatmapMap: no heatmap key - log in from Window > Vedg"));
+			UE_LOG(LogVedgSDK, Error, TEXT("VedgHeatmapMap: no heatmap key - log in from Tools > Vedg and make sure the game has one in Vedg Admin"));
 			return;
 		}
 
